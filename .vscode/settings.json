@@ -1,0 +1,4 @@
+{
+  "liveServer.settings.ignoreFiles": ["**"],
+  "files.exclude": { "data/pos.sqlite-*": true }
+}

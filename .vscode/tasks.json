@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Jalankan SatuToko POS (lokal)",
+      "type": "shell",
+      "windows": { "command": ".\\start-local.bat" },
+      "linux": { "command": "./start-local.sh" },
+      "osx": { "command": "./start-local.sh" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "group": { "kind": "build", "isDefault": true }
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Live Display — SatuToko</title>
+<style>
+  *{box-sizing:border-box} html,body{margin:0;height:100%}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#0b2e26;color:#fff;display:flex;flex-direction:column}
+  header{padding:1.2rem 2rem;display:flex;justify-content:space-between;align-items:center;background:#0f6e56}
+  header h1{margin:0;font-size:1.8rem} #clock{font-size:1.4rem;font-variant-numeric:tabular-nums}
+  main{flex:1;display:grid;grid-template-columns:1.4fr 1fr;gap:1.5rem;padding:1.5rem 2rem;min-height:0}
+  @media(max-width:800px){main{grid-template-columns:1fr}}
+  .panel{background:rgba(255,255,255,.06);border-radius:18px;padding:1.2rem 1.4rem;overflow:auto}
+  h2{margin:0 0 .8rem;font-size:1.2rem;color:#9fe0cc;font-weight:600}
+  .item{display:flex;justify-content:space-between;gap:1rem;padding:.6rem 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:1.25rem}
+  .item small{display:block;color:#9fe0cc;font-size:.9rem}
+  .total{font-size:3.4rem;font-weight:800;color:#ffd166;font-variant-numeric:tabular-nums;margin:.3rem 0}
+  .row{display:flex;justify-content:space-between;font-size:1.2rem;padding:.2rem 0}
+  .promo{background:rgba(255,209,102,.12);border-left:4px solid #ffd166;border-radius:10px;padding:.8rem 1rem;margin-bottom:.6rem;font-size:1.2rem}
+  .promo small{color:#ffd166}
+  .idle{text-align:center;font-size:2rem;opacity:.85;margin-top:3rem}
+  .thanks{text-align:center;margin-top:1rem;font-size:2rem}
+  #err{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#c62828;padding:.5rem 1rem;border-radius:8px;display:none}
+</style>
+</head>
+<body>
+<header><h1 id="store">Selamat Datang</h1><div id="clock"></div></header>
+<main>
+  <section class="panel" id="cart"><div class="idle">Selamat berbelanja 🛒</div></section>
+  <section class="panel"><div id="sum"></div><h2>Promo hari ini</h2><div id="promos"></div></section>
+</main>
+<div id="err"></div>
+<script>
+const P = new URLSearchParams(location.search), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rp = n => 'Rp ' + Math.round(+n || 0).toLocaleString('id-ID');
+setInterval(() => document.getElementById('clock').textContent = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}), 1000);
+let last = '';
+async function tick() {
+  try {
+    const r = await fetch(`api.php?a=display_get&store=${encodeURIComponent(P.get('store') || 1)}&key=${encodeURIComponent(P.get('key') || '')}`);
+    const j = await r.json(); if (j.error) throw new Error(j.error);
+    document.getElementById('err').style.display = 'none';
+    const sig = JSON.stringify([j.state, j.promos, j.store]); if (sig === last) return; last = sig;
+    if (j.store) document.getElementById('store').textContent = j.store.name;
+    const s = j.state, fresh = s && (j.now - j.updated) < 600;
+    document.getElementById('promos').innerHTML = j.promos.map(p => `<div class="promo">${esc(p.name)}${+p.member_only ? '<br><small>★ Khusus member</small>' : ''}</div>`).join('') || '<p style="opacity:.7">Belum ada promo aktif.</p>';
+    if (!fresh || s.status === 'idle' || !s.items || !s.items.length) {
+      document.getElementById('cart').innerHTML = '<div class="idle">Selamat berbelanja 🛒<br><small style="font-size:1.1rem">Daftar member untuk kumpulkan poin & promo khusus</small></div>';
+      document.getElementById('sum').innerHTML = ''; return;
+    }
+    document.getElementById('cart').innerHTML = '<h2>Belanjaan Anda' + (s.member ? ' · ★ ' + esc(s.member) : '') + '</h2>' + s.items.map(i =>
+      `<div class="item"><div>${esc(i.name)}<small>${(+i.qty).toLocaleString('id-ID')} ${esc(i.unit)}${i.promo ? ' · 🏷 ' + esc(i.promo) : ''}</small></div><div>${rp(i.total)}</div></div>`).join('');
+    document.getElementById('sum').innerHTML = `<h2>${s.status === 'paid' ? 'Terima kasih!' : 'Total'}</h2><div class="total">${rp(s.total)}</div>
+      ${s.discount ? `<div class="row"><span>Anda hemat</span><b style="color:#9fe0cc">${rp(s.discount)}</b></div>` : ''}
+      ${s.status === 'paid' ? `<div class="row"><span>Dibayar</span><b>${rp(s.paid)}</b></div><div class="row"><span>Kembalian</span><b>${rp(s.change)}</b></div><div class="thanks">🙏</div>` : ''}<br>`;
+  } catch (e) { const el = document.getElementById('err'); el.textContent = 'Koneksi display: ' + e.message; el.style.display = 'block'; }
+}
+tick(); setInterval(tick, 1500);
+</script>
+</body>
+</html>
